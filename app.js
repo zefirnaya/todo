@@ -1,5 +1,7 @@
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
 let taskIdCounter = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+let currentFilter = 'all';
+let searchTerm = '';
 
 document.addEventListener('DOMContentLoaded', initApp);
 
@@ -130,10 +132,109 @@ function addTask(e) {
     }
 }
 
+function filterTasks(filter) {
+    currentFilter = filter;
+    renderTasks();
+}
+
+function sortTasks() {
+    tasks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    saveTasks();
+    renderTasks();
+}
+
+function handleSearch(e) {
+    searchTerm = e.target.value.toLowerCase();
+    renderTasks();
+}
+
 function saveTasks() {
     localStorage.setItem('tasks', JSON.stringify(tasks));
 }
 
 function renderTasks() {
-    // -
+    const taskList = document.getElementById('task-list');
+    taskList.innerHTML = '';
+    
+    const filteredTasks = tasks.filter(task => {
+        const matchesFilter = currentFilter === 'all' ||
+            (currentFilter === 'active' && !task.completed) ||
+            (currentFilter === 'completed' && task.completed);
+            
+        const matchesSearch = task.text.toLowerCase().includes(searchTerm);
+        
+        return matchesFilter && matchesSearch;
+    });
+    
+    filteredTasks.forEach(task => {
+        const li = document.createElement('li');
+        li.className = `task-item ${task.completed ? 'completed' : ''}`;
+        li.dataset.taskId = task.id;
+        
+        const taskContent = document.createElement('div');
+        taskContent.className = 'task-content';
+        
+        const taskText = document.createElement('div');
+        taskText.className = 'task-text';
+        taskText.textContent = task.text;
+        taskContent.appendChild(taskText);
+        
+        const actions = document.createElement('div');
+        actions.className = 'task-actions';
+        
+        const toggleButton = document.createElement('button');
+        toggleButton.className = 'action-button toggle-button';
+        toggleButton.textContent = task.completed ? 'Undo' : 'Done';
+        toggleButton.addEventListener('click', () => toggleTask(task.id));
+        actions.appendChild(toggleButton);
+        
+        const editButton = document.createElement('button');
+        editButton.className = 'action-button edit-button';
+        editButton.textContent = 'Edit';
+        editButton.addEventListener('click', () => editTask(task.id));
+        actions.appendChild(editButton);
+        
+        const deleteButton = document.createElement('button');
+        deleteButton.className = 'action-button delete-button';
+        deleteButton.textContent = 'Delete';
+        deleteButton.addEventListener('click', () => deleteTask(task.id));
+        actions.appendChild(deleteButton);
+        
+        const dragHandle = document.createElement('div');
+        dragHandle.className = 'drag-handle';
+        dragHandle.innerHTML = '☰';
+        
+        li.appendChild(dragHandle);
+        li.appendChild(taskContent);
+        li.appendChild(actions);
+        
+        taskList.appendChild(li);
+    });
+}
+
+function toggleTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.completed = !task.completed;
+        saveTasks();
+        renderTasks();
+    }
+}
+
+function editTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        const newText = prompt('Edit task:', task.text);
+        if (newText !== null && newText.trim() !== '') {
+            task.text = newText.trim();
+            saveTasks();
+            renderTasks();
+        }
+    }
+}
+
+function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    renderTasks();
 }
