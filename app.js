@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', initApp);
 function initApp() {
     createAppStructure();
     renderTasks();
+    setupDragAndDrop();
 }
 
 function createAppStructure() {
@@ -112,6 +113,56 @@ function setupEventListeners() {
     document.getElementById('search-input').addEventListener('input', handleSearch);
 }
 
+function setupDragAndDrop() {
+    const taskList = document.getElementById('task-list');
+    
+    let draggedItem = null;
+    
+    taskList.addEventListener('dragstart', (e) => {
+        if (e.target.classList.contains('drag-handle')) {
+            draggedItem = e.target.closest('.task-item');
+            setTimeout(() => {
+                draggedItem.classList.add('dragging');
+            }, 0);
+        }
+    });
+    
+    taskList.addEventListener('dragend', () => {
+        if (draggedItem) {
+            draggedItem.classList.remove('dragging');
+            draggedItem = null;
+        }
+    });
+    
+    taskList.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const afterElement = getDragAfterElement(taskList, e.clientY);
+        const draggable = document.querySelector('.dragging');
+        if (draggable) {
+            if (afterElement == null) {
+                taskList.appendChild(draggable);
+            } else {
+                taskList.insertBefore(draggable, afterElement);
+            }
+        }
+    });
+    
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.task-item:not(.dragging)')];
+        
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+}
+
 function addTask(e) {
     e.preventDefault();
     const input = document.getElementById('task-input');
@@ -170,6 +221,7 @@ function renderTasks() {
         const li = document.createElement('li');
         li.className = `task-item ${task.completed ? 'completed' : ''}`;
         li.dataset.taskId = task.id;
+        li.draggable = true;
         
         const taskContent = document.createElement('div');
         taskContent.className = 'task-content';
@@ -203,6 +255,7 @@ function renderTasks() {
         const dragHandle = document.createElement('div');
         dragHandle.className = 'drag-handle';
         dragHandle.innerHTML = '☰';
+        dragHandle.draggable = true;
         
         li.appendChild(dragHandle);
         li.appendChild(taskContent);
